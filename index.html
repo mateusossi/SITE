@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Motoboy App - Estabelecimento e Motoboy</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background-color: #f0f0f0;
+    }
+    .container {
+      background: white;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 5px #ccc;
+      max-width: 600px;
+    }
+    input, select, button {
+      width: 100%;
+      padding: 8px;
+      margin-top: 8px;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+    .valor {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+    .chamado {
+      border-bottom: 1px solid #ddd;
+      padding: 10px 0;
+    }
+    .status {
+      font-weight: bold;
+      margin-top: 5px;
+    }
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+    }
+    .btnAceitar {
+      background-color: #28a745;
+      color: white;
+      padding: 6px 12px;
+      margin-top: 8px;
+    }
+    .btnEntregue {
+      background-color: #007bff;
+      color: white;
+      padding: 6px 12px;
+      margin-top: 8px;
+    }
+    .btnLogout {
+      background-color: #dc3545;
+      color: white;
+      padding: 6px 12px;
+      margin-top: 10px;
+      width: auto;
+    }
+    nav {
+      margin-bottom: 20px;
+    }
+    nav button {
+      width: auto;
+      padding: 8px 16px;
+      margin-right: 8px;
+      font-weight: bold;
+    }
+    nav button.active {
+      background-color: #007bff;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <button id="abaEstabelecimento" class="active">Estabelecimento</button>
+  <button id="abaMotoboy">Motoboy</button>
+</nav>
+
+<!-- Área Estabelecimento -->
+<div class="container" id="estabelecimentoContainer">
+  <h2>Solicitar Motoboy (Estabelecimento)</h2>
+  <form id="formPedido">
+    <label>Endereço de Coleta:</label>
+    <input type="text" id="coleta" required />
+
+    <label>Endereço de Entrega:</label>
+    <input type="text" id="entrega" required />
+
+    <label>Tipo de Entrega:</label>
+    <select id="tipoEntrega" required>
+      <option value="ida">Somente Ida (R$ 8,00)</option>
+      <option value="ida_volta">Ida e Volta (R$ 10,00)</option>
+    </select>
+
+    <div class="valor" id="valorEntrega">Valor: R$ 8,00</div>
+
+    <button type="submit">Solicitar Motoboy</button>
+  </form>
+</div>
+
+<!-- Área Motoboy -->
+<div class="container" id="motoboyContainer" style="display:none;">
+  <div style="display:flex; justify-content: space-between; align-items: center;">
+    <h2>Login Motoboy</h2>
+    <button class="btnLogout" id="btnLogout" style="display:none;">Sair</button>
+  </div>
+  <div id="loginMotoboyArea">
+    <input type="text" id="motoboyNome" placeholder="Digite seu nome" />
+    <button id="btnLogin">Entrar</button>
+  </div>
+
+  <div id="appMotoboy" style="display:none;">
+    <h3>Bem-vindo, <span id="motoboyLogado"></span></h3>
+
+    <h3>Chamados Pendentes</h3>
+    <div id="listaPendentes">
+      <em>Nenhum chamado pendente.</em>
+    </div>
+
+    <h3>Chamados Aceitos por Você</h3>
+    <div id="listaAceitos">
+      <em>Você ainda não aceitou nenhum chamado.</em>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Variáveis globais
+  let motoboyAtual = null;
+  let chamados = [];
+
+  // Elementos abas
+  const abaEstabelecimento = document.getElementById('abaEstabelecimento');
+  const abaMotoboy = document.getElementById('abaMotoboy');
+
+  // Containers
+  const estabelecimentoContainer = document.getElementById('estabelecimentoContainer');
+  const motoboyContainer = document.getElementById('motoboyContainer');
+
+  // Form estabelecimento
+  const form = document.getElementById('formPedido');
+  const tipoEntrega = document.getElementById('tipoEntrega');
+  const valorEntrega = document.getElementById('valorEntrega');
+
+  // Motoboy
+  const motoboyNomeInput = document.getElementById('motoboyNome');
+  const btnLogin = document.getElementById('btnLogin');
+  const btnLogout = document.getElementById('btnLogout');
+  const motoboyLogadoSpan = document.getElementById('motoboyLogado');
+
+  const loginMotoboyArea = document.getElementById('loginMotoboyArea');
+  const appMotoboy = document.getElementById('appMotoboy');
+
+  const listaPendentes = document.getElementById('listaPendentes');
+  const listaAceitos = document.getElementById('listaAceitos');
+
+  // Alternar abas
+  abaEstabelecimento.addEventListener('click', () => {
+    abaEstabelecimento.classList.add('active');
+    abaMotoboy.classList.remove('active');
+    estabelecimentoContainer.style.display = 'block';
+    motoboyContainer.style.display = 'none';
+  });
+
+  abaMotoboy.addEventListener('click', () => {
+    abaMotoboy.classList.add('active');
+    abaEstabelecimento.classList.remove('active');
+    estabelecimentoContainer.style.display = 'none';
+    motoboyContainer.style.display = 'block';
+  });
+
+  // Atualiza o valor do frete no formulário
+  tipoEntrega.addEventListener('change', () => {
+    const valor = tipoEntrega.value === 'ida' ? 8 : 10;
+    valorEntrega.textContent = `Valor: R$ ${valor.toFixed(2)}`;
+  });
+
+  // Formulário estabelecimento envia pedido
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+
+    const coleta = document.getElementById('coleta').value.trim();
+    const entrega = document.getElementById('entrega').value.trim();
+    const tipo = tipoEntrega.value === 'ida' ? 'Somente Ida' : 'Ida e Volta';
+    const valor = tipoEntrega.value === 'ida' ? 8 : 10;
+
+    const novoChamado = {
+      id: Date.now(),
+      coleta,
+      entrega,
+      tipo,
+      valor,
+      status: 'Pendente',
+      motoboy: null
+    };
+
+    chamados.push(novoChamado);
+
+    form.reset();
+    tipoEntrega.value = 'ida';
+    valorEntrega.textContent = 'Valor: R$ 8,00';
+
+    alert('Pedido solicitado com sucesso! Motoboy verá o chamado.');
+  });
+
+  // Login motoboy
+  btnLogin.addEventListener('click', () => {
+    const nome = motoboyNomeInput.value.trim();
+    if (!nome) {
+      alert('Por favor, digite seu nome.');
+      return;
+    }
+    motoboyAtual = nome;
+    motoboyNomeInput.value = '';
+    loginMotoboyArea.style.display = 'none';
+    appMotoboy.style.display = 'block';
+    btnLogout.style.display = 'inline-block';
+    motoboyLogadoSpan.textContent = motoboyAtual;
+    atualizarListas();
+  });
+
+  // Logout motoboy
+  btnLogout.addEventListener('click', () => {
+    motoboyAtual = null;
+    loginMotoboyArea.style.display = 'block';
+    appMotoboy.style.display = 'none';
+    btnLogout.style.display = 'none';
+  });
+
+  // Atualiza as listas para o motoboy logado
+  function atualizarListas() {
+    // Pendentes
+    const pendentes = chamados.filter(c => c.status === 'Pendente');
+    if (pendentes.length === 0) {
+      listaPendentes.innerHTML = '<em>Nenhum chamado pendente.</em>';
+    } else {
+      listaPendentes.innerHTML = pendentes.map(c => `
+        <div class="chamado" data-id="${c.id}">
+          <strong>Coleta:</strong> ${c.coleta}<br>
+          <strong>Entrega:</strong> ${c.entrega}<br>
+          <strong>Tipo:</strong> ${c.tipo}<br>
+          <strong>Valor:</strong> R$ ${c.valor.toFixed(2)}<br>
+          <div class="status">Status: ${c.status}</div>
+          <button class="btnAceitar" data-id="${c.id}">Aceitar</button>
+        </div>
+      `).join('');
+
+      listaPendentes.querySelectorAll('.btnAceitar').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.getAttribute('data-id'));
+          aceitarChamado(id);
+        });
+      });
+    }
+
+    // Aceitos pelo motoboy atual
+    const aceitos = chamados.filter(c => c.motoboy === motoboyAtual && c.status !== 'Pendente');
+    if (aceitos.length === 0) {
+      listaAceitos.innerHTML = '<em>Você ainda não aceitou nenhum chamado.</em>';
+    } else {
+      listaAceitos.innerHTML = aceitos.map(c => `
+        <div class="chamado" data-id="${c.id}">
+          <strong>Coleta:</strong> ${c.coleta}<br>
+          <strong>Entrega:</strong> ${c.entrega}<br>
+          <strong>Tipo:</strong> ${c.tipo}<br>
+          <strong>Valor:</strong> R$ ${c.valor.toFixed(2)}<br>
+          <div class="status">Status: ${c.status}</div>
+          <div><strong>Motoboy:</strong> ${c.motoboy}</div>
+          ${c.status === 'Indo até endereço de retirada' ? `<button class="btnEntregue" data-id="${c.id}">Entregue</button>` : ''}
+        </div>
+      `).join('');
+
+      listaAceitos.querySelectorAll('.btnEntregue').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.getAttribute('data-id'));
+          marcarEntregue(id);
+        });
+      });
+    }
+  }
+
+  // Motoboy aceita chamado
+  function aceitarChamado(id) {
+    const chamado = chamados.find(c => c.id === id);
+    if (!chamado || chamado.status !== 'Pendente') return;
+
+    chamado.status = 'Indo até endereço de retirada';
+    chamado.motoboy = motoboyAtual;
+    atualizarListas();
+  }
+
+  // Motoboy marca como entregue
+  function marcarEntregue(id) {
+    const chamado = chamados.find(c => c.id === id);
+    if (!chamado || chamado.status !== 'Indo até endereço de retirada') return;
+
+    chamado.status = 'Entregue';
+    atualizarListas();
+  }
+</script>
+
+</body>
+</html>
